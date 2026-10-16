@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 新生百事通 · 校园事务问答智能体</title>
+<style>
+  :root{
+    --primary:#2563eb; --primary-2:#1d4ed8; --bg:#f4f7fb; --card:#ffffff;
+    --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb; --ok:#16a34a; --warn:#d97706; --danger:#dc2626;
+    --radius:14px; --shadow:0 2px 10px rgba(17,24,39,.06);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+  a{color:var(--primary);text-decoration:none}
+  .topbar{background:linear-gradient(120deg,#1e3a8a,#2563eb 55%,#3b82f6);color:#fff;padding:18px 26px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:22px}
+  .brand h1{font-size:21px;letter-spacing:.5px}
+  .brand small{display:block;font-weight:400;font-size:12px;opacity:.9}
+  .badges{display:flex;gap:8px;flex-wrap:wrap}
+  .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);padding:3px 10px;border-radius:999px;font-size:12px}
+  .wrap{max-width:1180px;margin:20px auto;padding:0 18px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .tab{padding:9px 18px;border-radius:999px;background:var(--card);border:1px solid var(--line);cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);box-shadow:var(--shadow)}
+  .tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .panel{display:none;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px}
+  .panel.active{display:block}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:820px){.grid{grid-template-columns:1fr}}
+  .sec-t{font-size:17px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .sec-t .dot{width:8px;height:8px;border-radius:50%;background:var(--primary)}
+  /* 问答 */
+  #chatbox{height:420px;overflow-y:auto;border:1px solid var(--line);border-radius:12px;padding:14px;background:#fafbfd;display:flex;flex-direction:column;gap:12px}
+  .msg{max-width:82%;padding:10px 13px;border-radius:12px;font-size:14px;white-space:pre-wrap}
+  .user{align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:4px}
+  .bot{align-self:flex-start;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow);border-bottom-left-radius:4px;width:100%}
+  .bot .ans{font-size:14px}
+  .kbd{padding:6px 12px;border:1px solid var(--line);background:#fff;border-radius:999px;font-size:13px;cursor:pointer;color:var(--muted);transition:.15s}
+  .kbd:hover{border-color:var(--primary);color:var(--primary)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+  .inputrow{display:flex;gap:10px;margin-top:14px}
+  .inputrow input{flex:1;padding:12px 14px;border:1px solid var(--line);border-radius:10px;font-size:15px;outline:none}
+  .inputrow input:focus{border-color:var(--primary)}
+  .btn{background:var(--primary);color:#fff;border:none;padding:12px 20px;border-radius:10px;cursor:pointer;font-size:15px;font-weight:600}
+  .btn:hover{background:var(--primary-2)}
+  .btn.ghost{background:#fff;color:var(--primary);border:1px solid var(--primary)}
+  /* 答案卡 */
+  .card{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:10px;background:#fff}
+  .card .lab{font-size:12px;color:var(--muted);font-weight:700;margin:10px 0 4px}
+  .card ol,.card ul{margin:2px 0 0 18px}
+  .card li{font-size:13.5px;margin:2px 0}
+  .chip{display:inline-block;background:#eef2ff;color:var(--primary-2);padding:2px 9px;border-radius:6px;font-size:12.5px;margin:2px 3px 0 0}
+  .src{font-size:12px;color:var(--muted);margin-top:12px;padding-top:9px;border-top:1px dashed var(--line)}
+  .v-ok{color:var(--ok)} .v-warn{color:var(--warn)} .v-danger{color:var(--danger)}
+  .note{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:7px 10px;font-size:12.5px;margin-top:10px}
+  .fallback{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:13px 15px;font-size:14px}
+  .fb-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  /* 统计 */
+  .statcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:18px}
+  .stat{background:#fafbfd;border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center}
+  .stat .n{font-size:30px;font-weight:800;color:var(--primary)}
+  .stat .t{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .bar{margin:7px 0}
+  .bar .rl{display:flex;justify-content:space-between;font-size:13px}
+  .bar .trk{height:9px;background:#eef2ff;border-radius:6px;margin-top:3px;overflow:hidden}
+  .bar .fl{height:100%;background:linear-gradient(90deg,#3b82f6,#2563eb);border-radius:6px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+  th{background:#f8fafc}
+  .ok{color:var(--ok);font-weight:700}.bad{color:var(--danger);font-weight:700}
+  .lcard{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}
+  .lcard .q{font-weight:600;font-size:13.5px}
+  .muted{color:var(--muted);font-size:12.5px}
+  .kv{display:grid;grid-template-columns:130px 1fr;gap:6px 12px;font-size:14px}
+  .kv div{padding:6px 0;border-bottom:1px dashed var(--line)}
+  .kv .k{color:var(--muted);font-weight:600}
+  .notice{background:#eef2ff;border:1px solid #c7d2fe;color:#1e3a8a;border-radius:10px;padding:12px 14px;font-size:13.5px;margin-bottom:14px}
+  .foot{text-align:center;color:var(--muted);font-size:12px;padding:26px 0 18px}
+  .tag{display:inline-block;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;padding:2px 8px;border-radius:6px;font-size:12px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">🎓</div>
+    <div>
+      <h1>AI 新生百事通</h1>
+      <small>校园事务问答智能体 · 知识库 + 来源标注 + 无答案兜底 · V1.00.000</small>
+    </div>
+  </div>
+  <div class="badges">
+    <span class="badge">5 类知识库 · 55 条</span>
+    <span class="badge">来源可核验</span>
+    <span class="badge">OPC 轻量运营</span>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-p="chat">💬 智能问答</div>
+    <div class="tab" data-p="flow">🗂 办事流程</div>
+    <div class="tab" data-p="stat">📊 高频统计</div>
+    <div class="tab" data-p="test">✅ 30 题自测</div>
+    <div class="tab" data-p="about">🚀 关于 / OPC</div>
+  </div>
+
+  <!-- 智能问答 -->
+  <div class="panel active" id="p-chat">
+    <div class="notice">📌 直接输入你的校园问题（如“怎么申请助学贷款”），智能体会从已核验知识库检索并给出<b>结论、办理步骤、所需材料、地点/入口</b>，每条回答<b>注明来源与核验日期</b>。未找到可靠依据时会明确提示，并支持登记问题。</div>
+    <div id="chatbox">
+      <div class="msg bot"><div class="ans">你好，我是<b>AI 新生百事通</b> 👋 你可以问我：<br>· 怎么申请生源地助学贷款？<br>· 新生报到要带哪些材料？<br>· 宿舍设施坏了怎么报修？<br>· 怎么查成绩和绩点？</div></div>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="inputrow">
+      <input id="qin" placeholder="输入你的校园事务问题，回车提问…">
+      <button class="btn" id="askBtn">提问</button>
+      <button class="btn ghost" id="clearBtn">清空</button>
+    </div>
+  </div>
+
+  <!-- 办事流程 -->
+  <div class="panel" id="p-flow">
+    <div class="inputrow" style="margin-bottom:16px">
+      <input id="fsearch" placeholder="搜索流程/材料/地点关键词，如：学信网、报修、助学贷款…">
+    </div>
+    <div id="flowlist"></div>
+  </div>
+
+  <!-- 高频统计 -->
+  <div class="panel" id="p-stat">
+    <div class="statcards">
+      <div class="stat"><div class="n" id="stTotal">0</div><div class="t">已收录知识条目</div></div>
+      <div class="stat"><div class="n" id="stAsked">0</div><div class="t">本机累计提问</div></div>
+      <div class="stat"><div class="n" id="stMiss">0</div><div class="t">未解决/待登记问题</div></div>
+      <div class="stat"><div class="n" id="stCats">5</div><div class="t">知识分类</div></div>
+    </div>
+    <div class="grid">
+      <div>
+        <div class="sec-t"><span class="dot"></span>各类事务被提问次数</div>
+        <div id="catStat"></div>
+      </div>
+      <div>
+        <div class="sec-t"><span class="dot"></span>未解决问题登记（供管理员补充知识库）</div>
+        <div id="missList"></div>
+        <button class="btn ghost" style="margin-top:12px" onclick="exportMiss()">导出待处理清单 (JSON)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 30题自测 -->
+  <div class="panel" id="p-test">
+    <div class="notice">内置 30 道覆盖 5 类事务的真实问题测试集，用于验证<b>回答准确率、来源标注完整率、无答案处理正确率</b>（对应 T01 验收标准）。</div>
+    <div class="statcards">
+      <div class="stat"><div class="n" id="teAcc">-</div><div class="t">回答准确率（≥80% 达标）</div></div>
+      <div class="stat"><div class="n" id="teSrc">-</div><div class="t">来源标注完整率</div></div>
+      <div class="stat"><div class="n" id="teNA">-</div><div class="t">无答案处理正确率</div></div>
+    </div>
+    <button class="btn" onclick="runTest()">▶ 运行 30 题自测</button>
+    <div id="testOut" style="margin-top:16px"></div>
+  </div>
+
+  <!-- 关于/OPC -->
+  <div class="panel" id="p-about">
+    <div class="sec-t"><span class="dot"></span>作品概览</div>
+    <div class="kv">
+      <div class="k">作品名称</div><div>AI 新生百事通（校园事务问答智能体）</div>
+      <div class="k">目标用户</div><div>全体在校学生，重点大一新生</div>
+      <div class="k">核心问题</div><div>常见校园事务 30 秒内给出准确答案与办理指引</div>
+      <div class="k">技术路线</div><div>结构化知识库 + 检索问答 + 来源标注 + 无答案兜底 + 高频统计（本地可离线运行）</div>
+      <div class="k">数据来源</div><div>学信网、教育部、国家开发银行等公开权威渠道整理；校内具体事项标注“需按本校官方通知核实”</div>
+      <div class="k">隐私合规</div><div>不采集学号/手机号等无关个人信息；试用自愿；AI 内容对外使用前需人工审核</div>
+    </div>
+    <div class="sec-t" style="margin-top:22px"><span class="dot"></span>知识库覆盖</div>
+    <div id="catTable"></div>
+    <div class="sec-t" style="margin-top:22px"><span class="dot"></span>OPC 特征体现（低成本启动 · 小团队协作 · AI 辅助执行 · 快速验证 · 持续迭代）</div>
+    <table>
+      <tr><th>OPC 维度</th><th>本项目体现</th></tr>
+      <tr><td>低成本启动</td><td>纯前端知识库应用，双击即可运行，无需服务器与付费 API</td></tr>
+      <tr><td>小团队协作</td><td>知识库/开发/测试/材料四线并行，FAQ 主表统一维护</td></tr>
+      <tr><td>AI 辅助执行</td><td>自然语言检索 + 流程指引结构化输出，降低信息获取门槛</td></tr>
+      <tr><td>快速验证</td><td>内置 30 题自测，实时给出准确率、来源完整率、无答案处理正确率</td></tr>
+      <tr><td>持续迭代</td><td>高频统计 + 未解决问题登记，管理员据此补充知识库并复测</td></tr>
+    </table>
+    <div class="sec-t" style="margin-top:22px"><span class="dot"></span>推广适配性（向全校/其他学校复制）</div>
+    <p class="muted">本作品按“知识库驱动”设计：替换或扩充 <b>data/knowledge_base.json</b> 中的条目（覆盖本校教务/后勤/财务/生活服务通知），即可适配任意学校；每条含来源与核验日期，便于持续更新。具备标准化复制能力。</p>
+  </div>
+</div>
+
+<div class="foot">AI 新生百事通 · 大学生 OPC 创新创业 AI Agent 赛道（T01）· 知识库条目为公开通用办事规范整理，具体以本校官方通知为准</div>
+
+<script src="data/knowledge_base.js"></script>
+<script>
+"use strict";
+const KB = window.CAMPUS_KB || [];
+const CATS = ["教务学习","报到与学籍","奖助学金与财务","宿舍与后勤","校园生活服务"];
+
+/* ---------- 本地记录 ---------- */
+let stats = load("bs_stats") || {asked:0, byCat:{}, top:{}, miss:[]};
+function load(k){ try{return JSON.parse(localStorage.getItem(k));}catch(e){return null;} }
+function save(){ localStorage.setItem("bs_stats", JSON.stringify(stats)); }
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+/* ---------- 检索引擎 ---------- */
+function norm(s){ return String(s||"").toLowerCase().replace(/[\s，。、？?！!：:；;（）()【】\[\]"'"'"'‘’“”《》,.·]/g,""); }
+function score(entry, qn){
+  let s=0;
+  const qk = norm(qn);
+  for(const k of (entry.kw||[])){ if(qk.includes(norm(k))) s+=3; }
+  if(qk.includes(norm(entry.cat))) s+=1;
+  if(qk.includes(norm(entry.q))) s+=5;
+  for(const k of (entry.kw||[])){ if(norm(k) && qk.indexOf(norm(k))>-1){} }
+  return s;
+}
+function search(q){
+  let best=null, bs=0;
+  for(const e of KB){ const sc=score(e,q); if(sc>bs){bs=sc;best=e;} }
+  return bs>0?best:null;
+}
+
+/* ---------- 渲染回答卡 ---------- */
+function answerCard(e){
+  const v = e.verified?"<span class='v-ok'>✔ 已核验</span>":"<span class='v-warn'>⚠ 待核验</span>";
+  const src = (e.sourceUrl?"<a href='"+esc(e.sourceUrl)+"' target='_blank'>"+esc(e.sourceUrl)+"</a>":"（本校官方渠道）");
+  let h="<div class='card'>";
+  h+="<div class='ans'><b>📌 结论</b><br>"+esc(e.answer)+"</div>";
+  if(e.steps && e.steps.length){ h+="<div class='lab'>🗺 办理步骤</div><ol>"+e.steps.map(s=>"<li>"+esc(s)+"</li>").join("")+"</ol>"; }
+  if(e.materials && e.materials.length){ h+="<div class='lab'>🧾 所需材料</div><div>"+e.materials.map(m=>"<span class='chip'>"+esc(m)+"</span>").join("")+"</div>"; }
+  if(e.place){ h+="<div class='lab'>📍 办理地点 / 入口</div><div class='muted'>"+esc(e.place)+"</div>"; }
+  if(e.note){ h+="<div class='note'>⚠ "+esc(e.note)+"</div>"; }
+  h+="<div class='src'>📎 来源："+esc(e.source)+" ｜ 核验日期："+esc(e.date)+" ｜ "+v+"<br>类别："+esc(e.cat)+" ｜ 条目编号："+esc(e.id)+(e.sourceUrl?"<br>链接："+src:"")+"</div>";
+  h+="</div>";
+  return h;
+}
+
+/* ---------- 问答 ---------- */
+function pushMsg(html, who){
+  const b=document.getElementById("chatbox");
+  const d=document.createElement("div"); d.className="msg "+who; d.innerHTML=html;
+  b.appendChild(d); b.scrollTop=b.scrollHeight;
+}
+function recordAsk(q, ok){
+  stats.asked++;
+  const nq = norm(q);
+  stats.byCat=stats.byCat||{}; stats.top=stats.top||{};
+  if(!ok){ stats.miss=stats.miss||[]; stats.miss.push({t:new Date().toLocaleString(), q:q, cat:"未分类", handled:false}); }
+  save();
+  refreshStat();
+}
+function ask(){
+  const q=document.getElementById("qin").value.trim();
+  if(!q) return;
+  pushMsg(esc(q), "user");
+  document.getElementById("qin").value="";
+  const e=search(q);
+  let html;
+  if(e){
+    recordAsk(q,true);
+    html=answerCard(e);
+  }else{
+    recordAsk(q,false);
+    html="<div class='fallback'>🤔 <b>暂未找到可核实的信息。</b><br>我还没有收录与该问题匹配的已核验资料，为避免误导你，不给出猜测答案。建议通过<b>学校官方渠道</b>（教务处/学工处/后勤官网或咨询辅导员）核实。<br><div class='fb-actions'><button class='btn ghost' onclick='registerMiss(\""+esc(q).replace(/"/g,"&quot;")+"\")'>登记该问题，供管理员补充</button></div></div>";
+  }
+  pushMsg(html,"bot");
+}
+function registerMiss(q){
+  stats.miss=stats.miss||[];
+  const exists=stats.miss.some(m=>m.q===q);
+  if(!exists){ stats.miss.push({t:new Date().toLocaleString(), q:q, cat:"待归类", handled:false}); save(); refreshStat(); }
+  pushMsg("<span class='v-ok'>✔ 已登记：</span>"+esc(q)+"（将进入“高频统计-未解决问题”供管理员补充知识库）","bot");
+}
+
+/* ---------- 快捷问题 ---------- */
+const CHIPS=[["怎么申请生源地助学贷款？","C01"],["新生报到要带哪些材料？","B01"],["宿舍报修怎么弄？","D01"],["学籍在哪里查？","B02"],["怎么查成绩和绩点？","A02"],["怎么加入社团？","E06"]];
+function renderChips(){
+  const c=document.getElementById("chips"); c.innerHTML="";
+  CHIPS.forEach(x=>{ const s=document.createElement("button"); s.className="kbd"; s.textContent=x[0]; s.onclick=()=>{document.getElementById("qin").value=x[0];ask();}; c.appendChild(s); });
+}
+
+/* ---------- 统计面板 ---------- */
+function refreshStat(){
+  document.getElementById("stAsked").textContent=stats.asked||0;
+  document.getElementById("stMiss").textContent=(stats.miss||[]).length;
+  document.getElementById("stTotal").textContent=KB.length;
+  // 分类提问
+  const cb=document.getElementById("catStat");
+  const totals={};
+  KB.forEach(e=>{totals[e.cat]=(totals[e.cat]||0)+1;});
+  const askedCat=stats.byCat||{};
+  let h="";
+  CATS.forEach(cat=>{
+    const base=totals[cat]||0, cnt=askedCat[cat]||0;
+    const mx=Math.max(1,...CATS.map(c=>askedCat[c]||0));
+    const pct=Math.round(cnt/mx*100);
+    h+="<div class='bar'><div class='rl'><span>"+esc(cat)+"</span><span>"+cnt+" 次提问 / 知识库 "+base+" 条</span></div><div class='trk'><div class='fl' style='width:"+pct+"%'></div></div></div>";
+  });
+  cb.innerHTML=h||"<div class='muted'>暂无提问记录</div>";
+  // 未解决问题
+  const ml=document.getElementById("missList");
+  if(!stats.miss || !stats.miss.length){ ml.innerHTML="<div class='muted'>暂无未解决问题登记。可在问答中遇到“未找到信息”时点击登记。</div>"; }
+  else{
+    ml.innerHTML=stats.miss.map((m,i)=>"<div class='lcard'><div class='q'>"+(i+1)+". "+esc(m.q)+"</div><div class='muted'>"+esc(m.t)+" ｜ 状态："+(m.handled?"<span class='v-ok'>已补充</span>":"<span class='v-warn'>待补充</span>")+"</div><button class='btn ghost' style='margin-top:6px;padding:4px 10px;font-size:12px' onclick='markHandled("+i+")'>标记已补充</button></div>").join("");
+  }
+}
+function markHandled(i){ if(stats.miss[i]){stats.miss[i].handled=true; save(); refreshStat();} }
+function exportMiss(){
+  const blob=new Blob([JSON.stringify({exported:new Date().toLocaleString(), miss:stats.miss||[], byCat:stats.byCat||{}},null,2)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="待解决问题_"+Date.now()+".json"; a.click();
+}
+
+/* ---------- 办事流程浏览 ---------- */
+function renderFlow(filter){
+  filter=norm(filter||"");
+  const f=KB.filter(e=>{
+    if(!filter) return true;
+    return norm(e.q+e.answer+(e.place||"")+(e.materials||[]).join("")+e.cat).includes(filter);
+  });
+  document.getElementById("flowlist").innerHTML=f.map(e=>{
+    return "<div class='lcard'><span class='tag'>"+esc(e.cat)+"</span> <span class='q'>"+esc(e.q)+"</span> <span class='muted'>("+esc(e.id)+")</span>"+
+    "<div class='muted' style='margin-top:4px'>步骤 "+(e.steps?e.steps.length:0)+" 步 · 地点："+esc(e.place||"—")+" · 来源："+esc(e.source)+"</div>"+
+    "<button class='btn ghost' style='margin-top:6px;padding:4px 12px;font-size:12.5px' onclick='flowDetail(\""+esc(e.id)+"\")'>查看详情</button></div>";
+  }).join("") || "<div class='muted'>没有匹配条目，试试其他关键词</div>";
+}
+function flowDetail(id){
+  const e=KB.find(x=>x.id===id); if(!e) return;
+  document.getElementById("p-flow").insertAdjacentHTML("beforeend","<div id='fd'>"+answerCard(e)+"<button class='btn ghost' style='margin-top:10px' onclick=\"document.getElementById('fd').remove()\">收起</button></div>");
+  document.getElementById("fd").scrollIntoView({behavior:"smooth"});
+}
+
+/* ---------- 30 题自测 ---------- */
+const TEST30=[
+  {q:"怎么查成绩和绩点？", need:["成绩"]}, {q:"我挂科了怎么办？", need:["补考"]},
+  {q:"什么时候选课？", need:["教务"]}, {q:"怎么申请转专业？", need:["转专业"]},
+  {q:"四六级怎么报名？", need:["四六级"]}, {q:"可以辅修或双学位吗？", need:["辅修"]},
+  {q:"请假流程是什么？", need:["请假"]}, {q:"教材怎么领？", need:["教材"]},
+  {q:"怎么打印成绩单和在读证明？", need:["成绩单"]}, {q:"怎么申请休学？", need:["休学"]},
+  {q:"新生报到要带哪些材料？", need:["录取通知书"]}, {q:"学籍在哪里查？", need:["学信网"]},
+  {q:"要不要迁户口？", need:["户口"]}, {q:"男生怎么弄兵役登记？", need:["兵役"]},
+  {q:"学生证丢了怎么补办？", need:["学生证"]}, {q:"团组织关系怎么转？", need:["智慧团建"]},
+  {q:"入学体检要准备什么？", need:["体检"]}, {q:"生源地助学贷款怎么申请？", need:["学生在线系统"]},
+  {q:"国家奖学金和助学金有什么区别？", need:["国家奖学金"]}, {q:"家庭困难怎么认定？", need:["认定"]},
+  {q:"学费怎么交？可以缓缴吗？", need:["缴纳"]}, {q:"怎么找勤工助学？", need:["勤工助学"]},
+  {q:"助学贷款什么时候还？", need:["还款"]}, {q:"宿舍设施坏了怎么报修？", need:["报修"]},
+  {q:"宿舍水电费怎么交？", need:["水电"]}, {q:"图书馆怎么借书？", need:["图书馆"]},
+  {q:"校园卡丢了怎么挂失补办？", need:["挂失"]}, {q:"快递在哪里取？", need:["驿站"]},
+  {q:"心理压力大怎么办？", need:["心理"]}, {q:"迎新晚会几点开始？", need:["NOANSWER"]}
+];
+function runTest(){
+  let right=0, srcOk=0, naOk=0, rows="";
+  TEST30.forEach((t,i)=>{
+    const e=search(t.q);
+    let ok=false, na=false;
+    if(t.need[0]==="NOANSWER"){ na = !e; ok=na; }
+    else if(e){
+      const ans=norm(e.answer);
+      ok = t.need.every(n=>ans.includes(norm(n)));
+      if(e.source) srcOk++;
+    }
+    if(ok) right++;
+    const status = ok?"<span class='ok'>✔ 正确</span>":"<span class='bad'>✘ 未达预期</span>";
+    const show=e?"命中 "+esc(e.id)+"（"+esc(e.cat)+"）":"无答案兜底";
+    rows+="<tr><td>"+(i+1)+"</td><td>"+esc(t.q)+"</td><td>"+show+"</td><td>"+status+"</td></tr>";
+  });
+  const acc=Math.round(right/30*100);
+  const srcRate=Math.round(srcOk/30*100);
+  const naCnt=TEST30.filter(t=>t.need[0]==="NOANSWER").length;
+  const naRight=TEST30.filter(t=>t.need[0]==="NOANSWER").reduce((s,t)=>s+(search(t.q)?0:1),0);
+  const naRate=naCnt?Math.round(naRight/naCnt*100):100;
+  document.getElementById("teAcc").textContent=acc+"%";
+  document.getElementById("teSrc").textContent=srcRate+"%";
+  document.getElementById("teNA").textContent=naRate+"%";
+  document.getElementById("testOut").innerHTML=
+    "<div class='sec-t' style='margin-top:6px'><span class='dot'></span>逐题结果（30 题）</div>"+
+    "<table><tr><th>#</th><th>问题</th><th>命中/处理</th><th>判定</th></tr>"+rows+"</table>"+
+    "<div class='note' style='margin-top:12px'>回答准确率 "+acc+"%（≥80% 达标）；来源标注完整率（命中条目标注了来源）"+srcRate+"%；无答案处理正确率 "+naRate+"%。<br>判定标准：命中条目答案中包含预期关键词；未收录信息问题应正确触发“无答案兜底”。</div>";
+}
+
+/* ---------- 关于：知识库覆盖表 ---------- */
+function renderCatTable(){
+  const counts={}; KB.forEach(e=>{counts[e.cat]=(counts[e.cat]||0)+1;});
+  document.getElementById("catTable").innerHTML=
+    "<table><tr><th>类别</th><th>条目数</th><th>说明</th></tr>"+
+    CATS.map(c=>"<tr><td>"+esc(c)+"</td><td>"+(counts[c]||0)+"</td><td class='muted'>"+catDesc(c)+"</td></tr>").join("")+
+    "<tr><td><b>合计</b></td><td><b>"+KB.length+"</b></td><td class='muted'>≥50 条达标</td></tr></table>";
+}
+function catDesc(c){
+  return { "教务学习":"选课、考试、成绩、转专业、辅修、四六级、学籍管理",
+    "报到与学籍":"报到、学籍注册、户口、党团关系、学生证",
+    "奖助学金与财务":"助学贷款、奖学金、困难认定、学费、勤工助学",
+    "宿舍与后勤":"报修、水电、空调、门禁、用电安全",
+    "校园生活服务":"图书馆、校园卡、网络、快递、医保、心理、社团" }[c]||"";
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll(".tab").forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    document.getElementById("p-"+t.dataset.p).classList.add("active");
+  };
+});
+
+/* ---------- init ---------- */
+document.getElementById("askBtn").onclick=ask;
+document.getElementById("qin").addEventListener("keydown",e=>{if(e.key==="Enter")ask();});
+document.getElementById("clearBtn").onclick=()=>{document.getElementById("chatbox").innerHTML="<div class='msg bot'><div class='ans'>会话已清空。继续向我提问吧 👋</div></div>";};
+document.getElementById("fsearch").addEventListener("input",e=>renderFlow(e.target.value));
+renderChips(); refreshStat(); renderFlow(); renderCatTable();
+</script>
+</body>
+</html>
